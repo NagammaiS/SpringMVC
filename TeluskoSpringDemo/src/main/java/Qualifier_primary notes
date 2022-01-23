@@ -1,0 +1,194 @@
+@Component("fooFormatter")
+public class FooFormatter implements Formatter {
+ 
+    public String format() {
+        return "foo";
+    }
+}
+
+@Component("barFormatter")
+public class BarFormatter implements Formatter {
+ 
+    public String format() {
+        return "bar";
+    }
+}
+
+@Component
+public class FooService {
+     
+    @Autowired
+    private Formatter formatter;
+}
+
+
+By using the @Qualifier annotation, we can eliminate the issue of which bean needs to be injected.
+By including the @Qualifier annotation, together with the name of the specific implementation we want to use, in this example Foo, we can avoid ambiguity when Spring finds multiple beans of the same type.
+
+
+public class FooService {
+     
+    @Autowired
+    @Qualifier("fooFormatter")
+    private Formatter formatter;
+}
+
+
+
+
+We need to take into consideration that the qualifier name to be used is the one declared in the @Component annotation.
+
+Note that we could have also used the @Qualifier annotation on the Formatter implementing classes, instead of specifying the names in their @Component annotations, to obtain the same effect:
+
+@Component
+@Qualifier("fooFormatter")
+public class FooFormatter implements Formatter {
+    //...
+}
+
+@Component
+@Qualifier("barFormatter")
+public class BarFormatter implements Formatter {
+    //...
+}
+
+
+
+
+
+4. @Qualifier vs @Primary
+There's another annotation called @Primary that we can use to decide which bean to inject when ambiguity is present regarding dependency injection.
+
+This annotation defines a preference when multiple beans of the same type are present. The bean associated with the @Primary annotation will be used unless otherwise indicated.
+
+Let's see an example:
+
+@Configuration
+public class Config {
+ 
+    @Bean
+    public Employee johnEmployee() {
+        return new Employee("John");
+    }
+ 
+    @Bean
+    @Primary
+    public Employee tonyEmployee() {
+        return new Employee("Tony");
+    }
+}
+In this example, both methods return the same Employee type. The bean that Spring will inject is the one returned by the method tonyEmployee. This is because it contains the @Primary annotation. This annotation is useful when we want to specify which bean of a certain type should be injected by default.
+
+If we require the other bean at some injection point, we would need to specifically indicate it. We can do that via the @Qualifier annotation. For instance, we could specify that we want to use the bean returned by the johnEmployee method by using the @Qualifier annotation.
+
+It's worth noting that if both the @Qualifier and @Primary annotations are present, then the @Qualifier annotation will have precedence. Basically, @Primary defines a default, while @Qualifier is very specific.
+
+Let's look at another way of using the @Primary annotation, this time using the initial example:
+
+@Component
+@Primary
+public class FooFormatter implements Formatter {
+    //...
+}
+
+@Component
+public class BarFormatter implements Formatter {
+    //...
+}
+In this case, the @Primary annotation is placed in one of the implementing classes, and will disambiguate the scenario.
+
+
+
+
+
+
+
+
+
+
+
+
+BETTER EXAMPLE:
+
+The @Primary annotation sets the bean preference and it is used with the @Bean or @Component etc stereotype annotations. 
+On the other hand, @Qualifier is usually used with @Autowired or @Inject etc annotations.
+@Qualifier has more precedence than @Primary
+
+ Spring @Primary vs @Qualifier
+3.1. We use @Qualifier in Spring to autowire a specific bean among same type of beans, where as @Primary is used to give high preference to the specific bean among multiple beans of same type to inject to a bean.
+
+3.2. Suppose that you have provided multiple beans of same type and Spring is responsible to autowire a bean for that type (example: multiple datasources in single application), you need to tell Spring which bean should get autowired by default by annotating bean with @Primary, and we can not use @Qualifier in that situation because Spring will lookup for dependency in configuration phase.
+
+3.3. We can use @Qualifier and @Primary for the same bean. Use @Qualifier to inject specific bean otherwise Spring injects bean by default which is annotated with @Primary.
+
+
+Let’s see an example.
+
+package com.javabydeveloper.spring.primary;
+public interface Bird {
+}
+
+
+package com.javabydeveloper.spring.primary;
+public class Eagle implements Bird {
+  @Override
+  public String toString() {
+    return "Eagle";
+  }
+}
+
+public class Peacock implements Bird{
+  @Override
+  public String toString() {
+    return "Peacock";
+  }
+}
+
+
+@Configuration
+@ComponentScan("com.javabydeveloper.spring.primary")
+public class AppConfigForPrimary {
+  // ...
+  @Bean
+  @Primary
+  @Qualifier("peacockBean")
+  public Bird peacock() {
+    return new Peacock();
+  }
+  
+  @Bean
+  @Qualifier("eagleBean")
+  public Bird eagle() {
+    return new Eagle();
+  }
+}
+
+
+public class PrimaryDITestBean {
+  @Autowired
+  @Qualifier("eagleBean")
+  private Bird bird;
+  // ...
+  public void printBird() {
+    System.out.println(bird);
+  }
+}
+Testing :
+
+public class ApplicationPrimaryDemo {
+  public static void main(String[] args) {
+    ApplicationContext ctxt = new AnnotationConfigApplicationContext(AppConfigForPrimary.class);
+    PrimaryDITestBean pdits = ctxt.getBean(PrimaryDITestBean.class);
+    pdits.printBird();
+    // ...
+  }
+}
+Output :
+
+Eagle
+// ...
+Comment line @Qualifier("eagleBean") in PrimaryDITestBean class and test again.
+
+Output :
+
+Peacock
